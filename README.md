@@ -330,3 +330,160 @@ Deux options :
 - Le **ViewModel** n'est créé que pour `HomePage` car c'est la seule qui en a besoin
 - Vous pouvez créer d'autres ViewModels pour d'autres pages si nécessaire
 - Le drawer est totalement découplé des pages spécifiques
+---
+
+## 🎬 Nouvelles fonctionnalités - Recherche de Films OMDB
+
+### Vue d'ensemble
+
+La deuxième page (`SecondPage`) contient maintenant une **application complète de recherche de films** utilisant l'API OMDB. Elle suit le pattern MVVM et intègre plusieurs bonnes pratiques Flutter.
+
+### Structure des nouvelles fonctionnalités
+
+```
+lib/
+├── models/
+│   └── movie.dart               # Model pour les films
+├── viewmodels/
+│   ├── home_viewmodel.dart
+│   └── movie_search_viewmodel.dart  # ViewModel pour la recherche
+└── views/
+    ├── home_page.dart
+    └── second_page.dart         # Page de recherche renouvelée
+```
+
+### 📋 Composants ajoutés
+
+#### 1. **Movie Model** (`lib/models/movie.dart`)
+
+Représente les données d'un film provenant de l'API OMDB :
+```dart
+class Movie {
+  final String title, year, rated, released, runtime, genre, director, actors, plot;
+  final String? poster;
+  
+  factory Movie.fromJson(Map<String, dynamic> json) { ... }
+}
+```
+
+**Avantages :**
+- Structure typée pour les données
+- Validations (ex: poster != 'N/A')
+- Réutilisable dans l'application
+
+#### 2. **MovieSearchViewModel** (`lib/viewmodels/movie_search_viewmodel.dart`)
+
+Gère la logique de recherche :
+- Effectue les requêtes HTTP à l'API OMDB
+- Gère les états (chargement, erreur, succès)
+- Validation des entrées
+- Récupère la clé API via `--dart-define`
+
+```dart
+_apiKey = const String.fromEnvironment('API_KEY', defaultValue: 'edfbaa72');
+```
+
+**États gérés :**
+- `loading` : Affiche un spinner pendant la recherche
+- `movieData` : Stocke le film trouvé
+- `errorMessage` : Affiche les erreurs de l'API
+
+#### 3. **SecondPage mise à jour** (`lib/views/second_page.dart`)
+
+Interface complète de recherche avec :
+- **Champ de texte** pour entrer le titre du film
+- **Bouton de recherche** avec icône
+- **Affichage conditionnel** des résultats
+- **Gestion des erreurs** avec UI appropriée
+- **Affiche du film** + tous les détails (réalisateur, acteurs, synopsis, etc.)
+
+### 🔐 Gestion de la clé API
+
+#### Utilisation de `--dart-define`
+
+Au lieu de stocker la clé API en dur dans le code, on utilise les variables de compilation Dart :
+
+```bash
+flutter run --dart-define=API_KEY=edfbaa72
+```
+
+**Avantages :**
+- ✅ Pas d'exposition de secrets dans le code
+- ✅ Fonctionne sur Web, iOS, Android
+- ✅ Pas de dépendances externes supplémentaires
+- ✅ Variables compilées au moment du build
+
+**Comment faire :**
+1. Récupérer une clé API sur [https://www.omdbapi.com/apikey.aspx](https://www.omdbapi.com/apikey.aspx)
+2. Lancer l'app avec : `flutter run --dart-define=API_KEY=votre_cle_api`
+
+### 🌐 Intégration MVVM
+
+La recherche de films suit strictement le pattern MVVM :
+
+**Model → ViewModel → View**
+
+```
+User saisit un titre
+    ↓
+View appelle viewModel.setMovieTitle()
+    ↓
+ViewModel effectue la requête HTTP
+    ↓
+ViewModel met à jour _movieData et _loading
+    ↓
+ChangeNotifier notifie les listeners
+    ↓
+Consumer rebuild automatiquement l'UI
+    ↓
+Affichage du film ou message d'erreur
+```
+
+### 📦 Dépendances utilisées
+
+```yaml
+dependencies:
+  flutter: ^3.5.1
+  provider: ^6.1.0      # Gestion d'état réactive
+  http: ^1.1.0          # Requêtes HTTP
+```
+
+### 🔄 Flux de l'application
+
+```
+HomePage (Accueil)
+    ↓
+Clique sur "Deuxième Page" dans le drawer
+    ↓
+SecondPage (Recherche de Films)
+    ├── Entre un titre ("Inception")
+    ├── Clique sur "Rechercher"
+    └── MovieSearchViewModel
+        ├── Appel API OMDB
+        ├── Décode la réponse JSON
+        ├── Crée un objet Movie
+        └── Notifie les listeners
+            ↓
+        UI met à jour (affiche le film)
+```
+
+### 💡 Exemple d'utilisation
+
+```bash
+# Chercher un film avec votre clé API
+flutter run --dart-define=API_KEY=votre_cle_api
+
+# Rechercher "The Matrix"
+# Les détails s'affichent immédiatement : poster, durée, réalisateur, synopsis, etc.
+```
+
+### ✨ Points à retenir
+
+| Aspect | Solution |
+|--------|----------|
+| Structure des données | Model `Movie` typé |
+| Gestion d'état | `MovieSearchViewModel` avec `ChangeNotifier` |
+| API calls | Dans le ViewModel, pas dans la View |
+| Clé API | `--dart-define` au runtime |
+| Interface | Responsive avec `Consumer` et états conditionnels |
+| Erreurs | Gestion complète + messages utilisateur |
